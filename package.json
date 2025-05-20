@@ -1,0 +1,11 @@
+{
+  "name": "argblock",
+  "module": "src/argblock.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
