@@ -1,6 +1,6 @@
 
 import type { Block } from "../block.ts";
-import type { ParseReturn } from "./parse.ts";
+import type { ParseReturn } from "./parse-param.ts";
 
 export const checkNo = (arg1: string) => {
   if (arg1.startsWith("--no-")) {

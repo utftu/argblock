@@ -25,15 +25,6 @@ export const checkBoolValue = (str: string) => {
   return false;
 };
 
-const getBoolValue = (str: string) => {
-  if (str === "1" || str === "true") {
-    return true;
-  }
-  if (str === "0" || str === "false") {
-    return false;
-  }
-  return null as never;
-};
 
 export const parseParam = (
   arg1: string,

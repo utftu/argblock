@@ -1,23 +1,53 @@
 import type { Param } from "./param.ts";
 
+type Matcher = (
+  args: string[],
+  index: number
+) => {
+  jumpNext: number;
+  match: boolean;
+};
+
+const createDefaultMatcher =
+  (name: string): Matcher =>
+  (args: string[], index: number) => {
+    if (name === args[index]) {
+      return { jumpNext: 0, match: true };
+    }
+
+    return { jumpNext: 0, match: false };
+  };
+
 export class Block {
   arg: string;
   params: Param[];
   description: string;
+  matcher: Matcher;
 
   children: Block[] = [];
   constructor({
     arg,
     params,
     description,
+    matcher,
+    children = [],
   }: {
     arg: string;
     params: Param[];
     description: string;
+    matcher?: Matcher;
+    children?: Block[];
   }) {
     this.arg = arg;
     this.params = params;
     this.description = description;
+    this.children = children;
+
+    if (matcher) {
+      this.matcher = matcher;
+    } else {
+      this.matcher = createDefaultMatcher(this.arg);
+    }
   }
 
   findParam(name: string) {

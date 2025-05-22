@@ -1,5 +1,5 @@
 import type { Block } from "../block.ts";
-import { checkBoolValue, getNameFromEq, type ParseReturn } from "./parse.ts";
+import { checkBoolValue, getNameFromEq, type ParseReturn } from "./parse-param.ts";
 
 export const checkFull = (arg: string) => {
   if (arg.startsWith("--")) {

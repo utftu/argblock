@@ -1,4 +1,5 @@
-import type { Block, Param } from "./parser.ts";
+import type { Block } from "./block.ts";
+import type { Param } from "./param.ts";
 
 export const getNameFromEq = (str: string) => {
   const [name, ...values] = str.slice(2).split("=");
