@@ -1,5 +1,4 @@
 import { Block } from "./block.ts";
-import type { Param } from "./param.ts";
 import { parseParam } from "./parse-param/parse-param.ts";
 
 export const globalArg = "globalArg";
