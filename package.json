@@ -2,6 +2,7 @@
   "name": "argblock",
   "module": "src/argblock.ts",
   "type": "module",
+  "version": "0.0.1",
   "devDependencies": {
     "@types/bun": "latest"
   },
