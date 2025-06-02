@@ -18,11 +18,12 @@ const createDefaultMatcher =
     return { jumpNext: 0, match: false };
   };
 
-export class Block {
+export class Block<TData extends Record<any, any> = any> {
   arg: string;
   params: Param[];
   description: string;
   matcher: Matcher;
+  data: TData = {} as TData;
 
   children: Block[] = [];
   constructor({
