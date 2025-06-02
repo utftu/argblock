@@ -23,7 +23,7 @@ export class Block<TData extends Record<any, any> = any> {
   params: Param[];
   description: string;
   matcher: Matcher;
-  data: TData = {} as TData;
+  data: TData;
 
   children: Block[] = [];
   constructor({
@@ -32,17 +32,20 @@ export class Block<TData extends Record<any, any> = any> {
     description,
     matcher,
     children = [],
+    data = {} as TData,
   }: {
     arg: string;
     params: Param[];
     description: string;
     matcher?: Matcher;
     children?: Block[];
+    data?: TData;
   }) {
     this.arg = arg;
     this.params = params;
     this.description = description;
     this.children = children;
+    this.data = data;
 
     if (matcher) {
       this.matcher = matcher;
