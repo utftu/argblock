@@ -14,6 +14,7 @@ const createDefaultGlobalBlock = (children: Block[]) => {
 
 type ParsedBlock = {
   arg: string;
+  block: Block;
   params: Record<string, string>;
 };
 
@@ -28,7 +29,9 @@ export const parse = (args: string[], blocks: Block[]) => {
     ? blocks[0]!
     : createDefaultGlobalBlock(blocks);
 
-  const parsedBlocks: ParsedBlock[] = [{ arg: currentBlock.arg, params: {} }];
+  const parsedBlocks: ParsedBlock[] = [
+    { arg: currentBlock.arg, params: {}, block: currentBlock },
+  ];
 
   outer: for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
@@ -65,6 +68,7 @@ export const parse = (args: string[], blocks: Block[]) => {
       parsedBlocks.push({
         arg: arg.join(" "),
         params: {},
+        block: childBlock,
       });
 
       currentBlock = childBlock;
