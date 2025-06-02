@@ -12,13 +12,16 @@ const createDefaultGlobalBlock = (children: Block[]) => {
   });
 };
 
-type ParsedBlock = {
+type ParsedBlock<TBlock extends Block = any> = {
   arg: string;
-  block: Block;
+  block: TBlock;
   params: Record<string, string>;
 };
 
-export const parse = (args: string[], blocks: Block[]) => {
+export const parse = <TBlock extends Block = any>(
+  args: string[],
+  blocks: TBlock[]
+): ParsedBlock<TBlock>[] => {
   if (blocks.length === 0) {
     throw new Error("Empty blocks");
   }
