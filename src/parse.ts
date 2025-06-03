@@ -1,4 +1,5 @@
 import { Block } from "./block.ts";
+import { Matrix } from "./matrix.ts";
 import { parseParam } from "./parse-param/parse-param.ts";
 
 export const globalArg = "globalArg";
@@ -16,6 +17,31 @@ type ParsedBlock<TBlock extends Block = any> = {
   arg: string;
   block: TBlock;
   params: Record<string, string>;
+};
+
+const constructParam = (block: Block) => {
+  const paramMatrix = new Matrix([]);
+
+  block.params.forEach((params) => {
+    const left = params.short
+      ? `--${params.name}, ${params.short}`
+      : `--${params.name}`;
+
+    paramMatrix.matrix.push([left, params.description]);
+
+    if (params.short) {
+      console.log(`--${params.name},${params.short} - ${params.description}`);
+    }
+  });
+
+  console.log("Params:\n");
+  block.params.forEach((params) => {
+    if (params.short) {
+      console.log(`--${params.name},${params.short} - ${params.description}`);
+    }
+  });
+
+  block.children.forEach(() => {});
 };
 
 export const parse = <TBlock extends Block = any>(
@@ -38,6 +64,10 @@ export const parse = <TBlock extends Block = any>(
 
   outer: for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
+
+    if (arg === "--help") {
+      return [];
+    }
 
     // params
     if (arg.startsWith("-")) {
