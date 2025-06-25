@@ -2,7 +2,7 @@
   "name": "argblock",
   "module": "src/argblock.ts",
   "type": "module",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "main": "dist/argblock.js",
   "types": "dist/types/argblock.d.ts",
   "files": [
