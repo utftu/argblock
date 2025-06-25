@@ -16,5 +16,8 @@
     "@types/bun": "latest",
     "typescript": "^5"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "dapes": "^0.0.24"
+  }
 }
