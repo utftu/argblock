@@ -1,5 +1,5 @@
+import type { Param } from "../param.ts";
 import { checkBoolValue } from "../parse-param/parse-param.ts";
-import type { Param } from "../parse.ts";
 
 export const convertParam = (
   value: string,
