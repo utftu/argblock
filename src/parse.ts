@@ -1,5 +1,6 @@
 import { Block } from "./block.ts";
 import { parseParam } from "./parse-param/parse-param.ts";
+import { convertParam } from "./convert/convert.ts";
 
 export const globalArg = "globalArg";
 
@@ -15,7 +16,7 @@ const createDefaultGlobalBlock = (children: Block[]) => {
 type ParsedBlock<TBlock extends Block = any> = {
   arg: string;
   block: TBlock;
-  params: Record<string, string>;
+  params: Record<string, string | boolean | number>;
 };
 
 export const parse = <TBlock extends Block = any>(
@@ -54,7 +55,7 @@ export const parse = <TBlock extends Block = any>(
           throw new Error("Param dublicated: " + arg);
         }
 
-        lastParsedBlock.params[param.name] = value;
+        lastParsedBlock.params[param.name] = convertParam(value, param, arg);
       }
 
       i += jumpNext;

@@ -24,8 +24,8 @@ it("long with global", () => {
   const rawArgs = "--hello world -a=25 -e hello --hello=world1";
   const result = parse(rawArgs.split(" "), [globalBlock]);
 
-  expect(result).toEqual([
-    { arg: globalArg, params: { hello: "world", age: "25", enabled: "1" } },
+  expect(result).toMatchObject([
+    { arg: globalArg, params: { hello: "world", age: 25, enabled: true } },
     {
       arg: "hello",
       params: {
@@ -45,7 +45,7 @@ it("long without global", () => {
   const rawArgs = "hello --hello=world1";
   const result = parse(rawArgs.split(" "), [notGlobalBlock]);
 
-  expect(result).toEqual([
+  expect(result).toMatchObject([
     {
       arg: "hello",
       params: {

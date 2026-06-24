@@ -5,7 +5,7 @@ export const convertParam = (
   value: string,
   param: Param,
   originalParam: string
-) => {
+): string | boolean | number => {
   if (param.type === "boolean") {
     if (!checkBoolValue(value)) {
       throw new Error("Param must be boolean: " + originalParam);
@@ -31,4 +31,6 @@ export const convertParam = (
   if (param.type === "string") {
     return value;
   }
+
+  throw new Error("Unknown param type: " + param.type);
 };
