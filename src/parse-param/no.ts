@@ -9,11 +9,11 @@ export const checkNo = (arg1: string) => {
   return false;
 };
 
-export const parseNo = (arg1: string, block: Block): ParseReturn => {
+export const parseNo = (arg1: string, rest: string[], block: Block): ParseReturn => {
   const param = block.findParam(arg1.slice(5));
   if (!param) {
     throw new Error("Unknown param " + arg1);
   }
 
-  return { values: [{ param, value: "0" }], jumpNext: 0 };
+  return { values: [{ param, value: "0" }], elems: rest };
 };

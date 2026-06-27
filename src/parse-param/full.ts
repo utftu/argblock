@@ -11,9 +11,11 @@ export const checkFull = (arg: string) => {
 
 export const parseFull = (
   arg1: string,
-  arg2: string,
+  rest: string[],
   block: Block
 ): ParseReturn => {
+  const [arg2 = "", ...remaining] = rest;
+
   if (arg1.includes("=")) {
     const { name, value } = getNameFromEq(arg1.slice(2));
 
@@ -22,7 +24,7 @@ export const parseFull = (
       throw new Error("Unknown param " + arg1);
     }
 
-    return { values: [{ param, value }], jumpNext: 0 };
+    return { values: [{ param, value }], elems: rest };
   }
 
   const name = arg1.slice(2);
@@ -32,14 +34,12 @@ export const parseFull = (
   }
 
   if (param.type === "boolean") {
-    // --hello 1
     if (checkBoolValue(arg2)) {
-      return { values: [{ param, value: arg2 }], jumpNext: 1 };
+      return { values: [{ param, value: arg2 }], elems: remaining };
     }
 
-    return { values: [{ param, value: "1" }], jumpNext: 0 };
+    return { values: [{ param, value: "1" }], elems: rest };
   }
 
-  //--hello world
-  return { values: [{ param, value: arg2 }], jumpNext: 1 };
+  return { values: [{ param, value: arg2 }], elems: remaining };
 };

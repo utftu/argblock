@@ -1,26 +1,30 @@
 import type { Param } from "./param.ts";
 
-type Matcher = (
-  args: string[],
-  index: number
-) => {
-  jumpNext: number;
+export type Arg = {
+  name: string;
+  required: boolean;
+  variadic: boolean;
+};
+
+type Matcher = (elems: string[]) => {
+  elems: string[];
   match: boolean;
 };
 
 const createDefaultMatcher =
   (name: string): Matcher =>
-  (args: string[], index: number) => {
-    if (name === args[index]) {
-      return { jumpNext: 0, match: true };
+  (elems: string[]) => {
+    if (name === elems[0]) {
+      return { elems: elems.slice(1), match: true };
     }
 
-    return { jumpNext: 0, match: false };
+    return { elems, match: false };
   };
 
 export class Block<TData extends Record<any, any> = any> {
   arg: string;
   params: Param[];
+  positionals: Arg[];
   description: string;
   matcher: Matcher;
   data: TData;
@@ -29,6 +33,7 @@ export class Block<TData extends Record<any, any> = any> {
   constructor({
     arg,
     params,
+    positionals = [],
     description,
     matcher,
     children = [],
@@ -36,6 +41,7 @@ export class Block<TData extends Record<any, any> = any> {
   }: {
     arg: string;
     params: Param[];
+    positionals?: Arg[];
     description: string;
     matcher?: Matcher;
     children?: Block[];
@@ -43,6 +49,7 @@ export class Block<TData extends Record<any, any> = any> {
   }) {
     this.arg = arg;
     this.params = params;
+    this.positionals = positionals;
     this.description = description;
     this.children = children;
     this.data = data;

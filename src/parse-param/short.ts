@@ -11,11 +11,12 @@ export const checkShort = (arg: string) => {
 
 export const parseShort = (
   arg1: string,
-  arg2: string,
+  rest: string[],
   block: Block
 ): ParseReturn => {
+  const [arg2 = "", ...remaining] = rest;
+
   if (arg1.length > 2) {
-    // -v=hello
     if (arg1.includes("=")) {
       const { name, value } = getNameFromEq(arg1.slice(1));
 
@@ -24,7 +25,7 @@ export const parseShort = (
         throw new Error("Unknown param " + arg1);
       }
 
-      return { values: [{ param, value }], jumpNext: 0 };
+      return { values: [{ param, value }], elems: rest };
     }
 
     // -abc
@@ -44,7 +45,7 @@ export const parseShort = (
         return { param, value: "1" };
       });
 
-    return { values, jumpNext: 0 };
+    return { values, elems: rest };
   }
 
   const name = arg1[1]!;
@@ -54,15 +55,12 @@ export const parseShort = (
   }
 
   if (param.type === "boolean") {
-    // -a 1
     if (checkBoolValue(arg2)) {
-      return { values: [{ param, value: arg2 }], jumpNext: 1 };
+      return { values: [{ param, value: arg2 }], elems: remaining };
     }
 
-    // -a
-    return { values: [{ param, value: "1" }], jumpNext: 0 };
+    return { values: [{ param, value: "1" }], elems: rest };
   }
 
-  // -a hello
-  return { values: [{ param, value: arg2 }], jumpNext: 1 };
+  return { values: [{ param, value: arg2 }], elems: remaining };
 };

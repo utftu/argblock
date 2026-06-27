@@ -6,7 +6,7 @@ import { checkShort, parseShort } from "./short.ts";
 
 export type ParseReturn = {
   values: { param: Param; value: string }[];
-  jumpNext: number;
+  elems: string[];
 };
 
 export const getNameFromEq = (str: string) => {
@@ -25,23 +25,13 @@ export const checkBoolValue = (str: string) => {
   return false;
 };
 
+export const parseParam = (elems: string[], block: Block): ParseReturn => {
+  const [arg1 = ""] = elems;
+  const rest = elems.slice(1);
 
-export const parseParam = (
-  arg1: string,
-  arg2: string,
-  block: Block
-): ParseReturn => {
-  if (checkNo(arg1)) {
-    return parseNo(arg1, block);
-  }
-
-  if (checkShort(arg1)) {
-    return parseShort(arg1, arg2, block);
-  }
-
-  if (checkFull(arg1)) {
-    return parseFull(arg1, arg2, block);
-  }
+  if (checkNo(arg1)) return parseNo(arg1, rest, block);
+  if (checkShort(arg1)) return parseShort(arg1, rest, block);
+  if (checkFull(arg1)) return parseFull(arg1, rest, block);
 
   return null as never;
 };

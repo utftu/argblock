@@ -1,9 +1,8 @@
 import { test, expect, describe } from "bun:test";
-import { checkFull, parseFull } from "./full.ts"; // укажи путь
+import { checkFull, parseFull } from "./full.ts";
 import { Block } from "../block.ts";
 import { Param } from "../param.ts";
 
-// Утилита для генерации блока
 const makeBlock = (params: Param[]) =>
   new Block({
     arg: "test",
@@ -29,57 +28,57 @@ describe("parseFull", () => {
   test("parses --param=value correctly", () => {
     const block = makeBlock([new Param({ name: "mode", type: "string" })]);
 
-    const result = parseFull("--mode=fast", "", block);
+    const result = parseFull("--mode=fast", [], block);
 
     expect(result).toEqual({
       values: [{ param: block.findParam("mode")!, value: "fast" }],
-      jumpNext: 0,
+      elems: [],
     });
   });
 
   test("parses --flag true for boolean param", () => {
     const block = makeBlock([new Param({ name: "flag", type: "boolean" })]);
 
-    const result = parseFull("--flag", "true", block);
+    const result = parseFull("--flag", ["true"], block);
 
     expect(result).toEqual({
       values: [{ param: block.findParam("flag")!, value: "true" }],
-      jumpNext: 1,
+      elems: [],
     });
   });
 
   test("parses --flag without value as 1 for boolean param", () => {
     const block = makeBlock([new Param({ name: "flag", type: "boolean" })]);
 
-    const result = parseFull("--flag", "", block);
+    const result = parseFull("--flag", [], block);
 
     expect(result).toEqual({
       values: [{ param: block.findParam("flag")!, value: "1" }],
-      jumpNext: 0,
+      elems: [],
     });
   });
 
   test("parses --name John for string param", () => {
     const block = makeBlock([new Param({ name: "name", type: "string" })]);
 
-    const result = parseFull("--name", "John", block);
+    const result = parseFull("--name", ["John"], block);
 
     expect(result).toEqual({
       values: [{ param: block.findParam("name")!, value: "John" }],
-      jumpNext: 1,
+      elems: [],
     });
   });
 
   test("throws if param is unknown", () => {
     const block = makeBlock([]);
-    expect(() => parseFull("--unknown", "", block)).toThrow(
+    expect(() => parseFull("--unknown", [], block)).toThrow(
       "Unknown param --unknown"
     );
   });
 
   test("throws if param in --param=value is unknown", () => {
     const block = makeBlock([]);
-    expect(() => parseFull("--param=value", "", block)).toThrow(
+    expect(() => parseFull("--param=value", [], block)).toThrow(
       "Unknown param --param=value"
     );
   });

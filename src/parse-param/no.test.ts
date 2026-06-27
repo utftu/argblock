@@ -24,7 +24,7 @@ describe("checkNo", () => {
 describe("parseNo", () => {
   test("returns value=0 for known param", () => {
     const block = makeBlock([new Param({ name: "cache", type: "boolean" })]);
-    const result = parseNo("--no-cache", block);
+    const result = parseNo("--no-cache", [], block);
 
     expect(result).toEqual({
       values: [
@@ -33,13 +33,13 @@ describe("parseNo", () => {
           value: "0",
         },
       ],
-      jumpNext: 0,
+      elems: [],
     });
   });
 
   test("throws for unknown param", () => {
     const block = makeBlock([]);
-    expect(() => parseNo("--no-unknown", block)).toThrow(
+    expect(() => parseNo("--no-unknown", [], block)).toThrow(
       "Unknown param --no-unknown"
     );
   });

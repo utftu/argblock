@@ -1,92 +1,122 @@
-import { Block } from "./block.ts";
+import { Block, type Arg } from "./block.ts";
 import { parseParam } from "./parse-param/parse-param.ts";
 import { convertParam } from "./convert/convert.ts";
 
 export const globalArg = "globalArg";
 
-const createDefaultGlobalBlock = (children: Block[]) => {
-  return new Block({
-    arg: globalArg,
-    params: [],
-    description: `Default global params for app`,
-    children,
-  });
-};
-
 type ParsedBlock<TBlock extends Block = any> = {
   arg: string;
   block: TBlock;
   params: Record<string, string | boolean | number>;
+  positionals: Record<string, string | string[]>;
 };
+
+function consumePositionals(
+  elems: string[],
+  positionals: Arg[],
+): { values: Record<string, string | string[]>; elems: string[] } {
+  const values: Record<string, string | string[]> = {};
+  let rest = elems;
+
+  for (const pos of positionals) {
+    if (pos.variadic) {
+      const collected: string[] = [];
+      while (rest.length > 0 && !rest[0]!.startsWith("-")) {
+        collected.push(rest[0]!);
+        rest = rest.slice(1);
+      }
+      if (pos.required && collected.length === 0) {
+        throw new Error(`Required positional <...${pos.name}> is missing`);
+      }
+      values[pos.name] = collected;
+    } else {
+      if (rest.length === 0 || rest[0]!.startsWith("-")) {
+        if (pos.required) {
+          throw new Error(`Required positional <${pos.name}> is missing`);
+        }
+        break;
+      }
+      values[pos.name] = rest[0]!;
+      rest = rest.slice(1);
+    }
+  }
+
+  return { values, elems: rest };
+}
+
+function matchChild(elems: string[], children: Block[]) {
+  for (const child of children) {
+    const { match, elems: afterName } = child.matcher(elems);
+    if (!match) continue;
+
+    const { values, elems: rest } = consumePositionals(
+      afterName,
+      child.positionals,
+    );
+
+    return { block: child, positionals: values, elems: rest };
+  }
+  return undefined;
+}
 
 export const parse = <TBlock extends Block = any>(
   args: string[],
-  blocks: TBlock[]
+  blocks: TBlock[],
 ): ParsedBlock<TBlock>[] => {
   if (blocks.length === 0) {
     throw new Error("Empty blocks");
   }
 
-  const globalArgInit = blocks.length === 1 && blocks[0]!.arg === globalArg;
+  const isGlobalBlock = blocks.length === 1 && blocks[0]!.arg === globalArg;
 
-  let currentBlock = globalArgInit
+  let currentBlock: Block = isGlobalBlock
     ? blocks[0]!
-    : createDefaultGlobalBlock(blocks);
+    : new Block({
+        arg: globalArg,
+        params: [],
+        description: "",
+        children: blocks,
+      });
 
-  const parsedBlocks: ParsedBlock[] = [
-    { arg: currentBlock.arg, params: {}, block: currentBlock },
+  const result: ParsedBlock[] = [
+    { arg: currentBlock.arg, params: {}, positionals: {}, block: currentBlock },
   ];
 
-  outer: for (let i = 0; i < args.length; i++) {
-    const arg = args[i]!;
+  for (let i = 0; i < args.length; i++) {
+    const token = args[i]!;
 
-    if (arg === "--help") {
-      return [];
-    }
+    if (token === "--help") return [];
 
-    // params
-    if (arg.startsWith("-")) {
-      const nextArg = args[i + 1] || "";
-      const { jumpNext, values } = parseParam(arg, nextArg, currentBlock);
-      const lastParsedBlock = parsedBlocks.at(-1)!;
+    if (token.startsWith("-")) {
+      const { values, elems: rest } = parseParam(args.slice(i), currentBlock);
+      const current = result.at(-1)!;
 
       for (const { param, value } of values) {
-        if (param.name in lastParsedBlock.params) {
-          throw new Error("Param dublicated: " + arg);
+        if (param.name in current.params) {
+          throw new Error("Param duplicated: " + token);
         }
-
-        lastParsedBlock.params[param.name] = convertParam(value, param, arg);
+        current.params[param.name] = convertParam(value, param, token);
       }
 
-      i += jumpNext;
+      i = args.length - rest.length - 1;
       continue;
     }
 
-    // args
-    for (const childBlock of currentBlock.children) {
-      const { jumpNext, match } = childBlock.matcher(args, i);
+    const matched = matchChild(args.slice(i), currentBlock.children);
+    if (!matched) throw new Error(`Unknown arg: ${token}`);
 
-      if (!match) {
-        continue;
-      }
+    const newI = args.length - matched.elems.length - 1;
 
-      const lastI = i;
-      i += jumpNext;
+    result.push({
+      arg: args.slice(i, newI + 1).join(" "),
+      params: {},
+      positionals: matched.positionals,
+      block: matched.block,
+    });
 
-      const arg = args.slice(lastI, i + 1 + jumpNext);
-      parsedBlocks.push({
-        arg: arg.join(" "),
-        params: {},
-        block: childBlock,
-      });
-
-      currentBlock = childBlock;
-
-      continue outer;
-    }
-
-    throw new Error(`Not param or arg: ${arg}`);
+    currentBlock = matched.block;
+    i = newI;
   }
 
-  return globalArgInit ? parsedBlocks : parsedBlocks.slice(1);
+  return isGlobalBlock ? result : result.slice(1);
 };

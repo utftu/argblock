@@ -39,7 +39,7 @@ function getParamNames(elems: string[]) {
       return {
         full,
         short,
-        elems: elems.slice(i - 1),
+        elems: elems.slice(i),
       };
     }
 
@@ -76,7 +76,7 @@ function getDefault(
   };
 }
 
-function parseOption(pattern: string, description?: string) {
+export function parseParam(pattern: string, description?: string) {
   let strToParse = pattern.trim();
 
   if (strToParse.startsWith("-") === false) {

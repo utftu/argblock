@@ -1,33 +1,68 @@
-export type PositionalDef = {
+export type Arg = {
   name: string;
   required: boolean;
+  variadic: boolean;
 };
 
-export type CommandPattern = {
+type CommandDef = {
   name: string;
-  positionals: PositionalDef[];
+  args: Arg[];
 };
 
-export const parseCommandPattern = (pattern: string): CommandPattern => {
-  const tokens = pattern.trim().split(/\s+/);
-  const first = tokens[0] ?? "";
+function getCommandName(elems: string[]) {
+  const name = elems[0];
 
-  let name = "";
-  let startIndex = 0;
-
-  if (!first.startsWith("<") && !first.startsWith("[")) {
-    name = first;
-    startIndex = 1;
+  if (!name || name.startsWith("<") || name.startsWith("[")) {
+    throw new Error("Command name is missing");
   }
 
-  const positionals: PositionalDef[] = [];
-  for (const token of tokens.slice(startIndex)) {
-    if (token.startsWith("<") && token.endsWith(">")) {
-      positionals.push({ name: token.slice(1, -1), required: true });
-    } else if (token.startsWith("[") && token.endsWith("]")) {
-      positionals.push({ name: token.slice(1, -1), required: false });
+  return { name, elems: elems.slice(1) };
+}
+
+function parseArg(token: string): Arg {
+  const required = token.startsWith("<");
+  const optional = token.startsWith("[");
+
+  if (!required && !optional) {
+    throw new Error(`Unknown token ${token}, expected <arg> or [arg]`);
+  }
+
+  const inner = token.slice(1, -1);
+  const variadic = inner.startsWith("...");
+  const name = variadic ? inner.slice(3) : inner;
+
+  if (!name) {
+    throw new Error(`Arg name is empty in ${token}`);
+  }
+
+  return { name, required, variadic };
+}
+
+function getArgs(elems: string[]) {
+  const args: Arg[] = [];
+
+  for (let i = 0; i < elems.length; i++) {
+    const arg = parseArg(elems[i]!);
+
+    if (i > 0 && args[i - 1]!.variadic) {
+      throw new Error("Variadic arg must be last");
     }
+
+    if (i > 0 && !args[i - 1]!.required && arg.required) {
+      throw new Error("Required arg cannot follow optional arg");
+    }
+
+    args.push(arg);
   }
 
-  return { name, positionals };
-};
+  return args;
+}
+
+export function parseCommand(pattern: string, _description?: string): CommandDef {
+  const elems = pattern.trim().split(/\s+/);
+
+  const { name, elems: rest } = getCommandName(elems);
+  const args = getArgs(rest);
+
+  return { name, args };
+}
