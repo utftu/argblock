@@ -14,10 +14,8 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "dapes": "^0.0.42",
     "typescript": "^5"
   },
-  "license": "MIT",
-  "dependencies": {
-    "dapes": "^0.0.24"
-  }
+  "license": "MIT"
 }

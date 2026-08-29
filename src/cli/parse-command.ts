@@ -1,12 +1,9 @@
-export type Arg = {
-  name: string;
-  required: boolean;
-  variadic: boolean;
-};
+import type { Positional } from "../block.ts";
+import { validatePositionals } from "../positional/positional.ts";
 
 type CommandDef = {
   name: string;
-  args: Arg[];
+  args: Positional[];
 };
 
 function getCommandName(elems: string[]) {
@@ -19,7 +16,7 @@ function getCommandName(elems: string[]) {
   return { name, elems: elems.slice(1) };
 }
 
-function parseArg(token: string): Arg {
+function parseArg(token: string): Positional {
   const required = token.startsWith("<");
   const optional = token.startsWith("[");
 
@@ -38,27 +35,16 @@ function parseArg(token: string): Arg {
   return { name, required, variadic };
 }
 
-function getArgs(elems: string[]) {
-  const args: Arg[] = [];
-
-  for (let i = 0; i < elems.length; i++) {
-    const arg = parseArg(elems[i]!);
-
-    if (i > 0 && args[i - 1]!.variadic) {
-      throw new Error("Variadic arg must be last");
-    }
-
-    if (i > 0 && !args[i - 1]!.required && arg.required) {
-      throw new Error("Required arg cannot follow optional arg");
-    }
-
-    args.push(arg);
-  }
-
+function getArgs(elems: string[]): Positional[] {
+  const args = elems.map(parseArg);
+  validatePositionals(args);
   return args;
 }
 
-export function parseCommand(pattern: string, _description?: string): CommandDef {
+export function parseCommand(
+  pattern: string,
+  _description?: string,
+): CommandDef {
   const elems = pattern.trim().split(/\s+/);
 
   const { name, elems: rest } = getCommandName(elems);

@@ -1,6 +1,6 @@
 import { expect, it } from "bun:test";
-import { Param } from "./param.ts";
-import { Block } from "./block.ts";
+import { Param } from "../param.ts";
+import { Block } from "../block.ts";
 import { globalArg, parse } from "./parse.ts";
 
 it("long with global", () => {

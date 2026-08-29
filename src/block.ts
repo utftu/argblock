@@ -1,6 +1,7 @@
 import type { Param } from "./param.ts";
+import { validatePositionals } from "./positional/positional.ts";
 
-export type Arg = {
+export type Positional = {
   name: string;
   required: boolean;
   variadic: boolean;
@@ -24,7 +25,7 @@ const createDefaultMatcher =
 export class Block<TData extends Record<any, any> = any> {
   arg: string;
   params: Param[];
-  positionals: Arg[];
+  positionals: Positional[];
   description: string;
   matcher: Matcher;
   data: TData;
@@ -41,12 +42,14 @@ export class Block<TData extends Record<any, any> = any> {
   }: {
     arg: string;
     params: Param[];
-    positionals?: Arg[];
+    positionals?: Positional[];
     description: string;
     matcher?: Matcher;
     children?: Block[];
     data?: TData;
   }) {
+    validatePositionals(positionals);
+
     this.arg = arg;
     this.params = params;
     this.positionals = positionals;
