@@ -9,8 +9,9 @@
     "dist/**"
   ],
   "scripts": {
-    "build": "bun build ./src/argblock.ts --outdir ./dist && bun run types",
-    "types": "tsc --project tsconfig.types.json",
+    "build": "bun run build:js && bun run build:types",
+    "build:js": "bun build ./src/argblock.ts --outdir ./dist",
+    "build:types": "tsc --project tsconfig.types.json",
     "test": "bun test"
   },
   "devDependencies": {
