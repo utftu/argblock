@@ -1,8 +1,10 @@
 import { Block } from "../block.ts";
-import { globalArg, parse } from "../parse/parse.ts";
+import { globalArg, parse, type ParsedBlock } from "../parse/parse.ts";
 import { formatHelp } from "../parse/help.ts";
 import { parseCommand } from "./parse-command.ts";
 import { parseParam } from "./parse-param.ts";
+
+type Action = (parsed: ParsedBlock) => void;
 
 export class Cli {
   private root: Block;
@@ -41,7 +43,7 @@ export class Cli {
     return this;
   }
 
-  base(pattern: string, description: string, build: (cli: Cli) => void) {
+  block(pattern: string, description: string, build: (cli: Cli) => void) {
     const { name, args } = parseCommand(pattern, description);
 
     const block = new Block({
@@ -67,9 +69,29 @@ export class Cli {
     return this;
   }
 
+  action(handler: Action) {
+    this.current.data.action = handler;
+
+    return this;
+  }
+
   parse(args: string[]) {
     return parse(args, [this.root], {
       onHelp: (block) => console.log(formatHelp(block)),
     });
+  }
+
+  run(args: string[]) {
+    const result = this.parse(args);
+    const matched = result.at(-1);
+    if (!matched) return;
+
+    const handler = matched.block.data.action as Action | undefined;
+    if (!handler) {
+      const label = matched.arg === globalArg ? "the global command" : matched.arg;
+      throw new Error(`No action defined for ${label}`);
+    }
+
+    handler(matched);
   }
 }

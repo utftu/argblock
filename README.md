@@ -49,13 +49,13 @@ Output:
 
 Flags and positional arguments can be interleaved freely — `run app.ts --verbose`, `run --verbose app.ts`, and `run --verbose app.ts --output dist` all fill `file` the same way. Only the relative order *among* the positionals themselves matters (the first non-flag, non-subcommand token fills the first positional, the second fills the second, and so on).
 
-- **`.command(pattern, description?)`** declares a command and makes it the current context for subsequent `.param()` calls. The pattern is the command name followed by positional arguments: `<name>` for required, `[name]` for optional, and `[...name]` for variadic (must be last). Always attaches as a sibling at the current nesting level (top-level, or inside the `.base()` it was declared in).
-- **`.base(pattern, description, build)`** declares a command group: a command that has its own subcommands instead of being runnable itself. It creates the block (same pattern syntax as `.command()`) and calls `build(nested)` with a fresh `Cli` scoped to it — use `.command()`/`.base()`/`.param()` on `nested` to populate the group. Chaining continues on the outer `Cli` afterwards, so a `.command()` right after a `.base()` is a sibling of the group, not nested inside it:
+- **`.command(pattern, description?)`** declares a command and makes it the current context for subsequent `.param()` calls. The pattern is the command name followed by positional arguments: `<name>` for required, `[name]` for optional, and `[...name]` for variadic (must be last). Always attaches as a sibling at the current nesting level (top-level, or inside the `.block()` it was declared in).
+- **`.block(pattern, description, build)`** declares a command group: a command that has its own subcommands instead of being runnable itself. It creates the block (same pattern syntax as `.command()`) and calls `build(nested)` with a fresh `Cli` scoped to it — use `.command()`/`.block()`/`.param()` on `nested` to populate the group. Chaining continues on the outer `Cli` afterwards, so a `.command()` right after a `.block()` is a sibling of the group, not nested inside it:
 
   ```javascript
   const cli = new Cli()
     .command("status", "Show status")
-    .base("remote", "Manage remotes", (remote) => {
+    .block("remote", "Manage remotes", (remote) => {
       remote
         .command("add <name> <url>", "Add a remote")
         .command("remove <name>", "Remove a remote");
@@ -64,8 +64,21 @@ Flags and positional arguments can be interleaved freely — `run app.ts --verbo
   cli.parse(["remote", "add", "origin", "https://example.com"]);
   ```
 
-- **`.param(pattern, description?)`** declares a parameter on the current command (or on the global block if called before any `.command()`/`.base()`). The pattern is `--name [-s] <type> [default]`, where `type` is one of `string`/`str`, `number`/`num`/`int`, `boolean`/`bool`.
-- **`.parse(args)`** parses `args` and returns the same shape as the low-level `parse()` function, always including a leading entry for the global block.
+- **`.param(pattern, description?)`** declares a parameter on the current command (or on the global block if called before any `.command()`/`.block()`). The pattern is `--name [-s] <type> [default]`, where `type` is one of `string`/`str`, `number`/`num`/`int`, `boolean`/`bool`.
+- **`.action(handler)`** attaches a handler to the current command — `handler({ arg, params, positionals })` — called by `.run()` when that command is the one actually invoked.
+- **`.parse(args)`** parses `args` and returns the same shape as the low-level `parse()` function, always including a leading entry for the global block. Does not call any `.action()` handlers.
+- **`.run(args)`** parses `args` and dispatches to the `.action()` handler of whichever command was actually matched (the deepest entry in the parsed result). Throws if that command has no `.action()` attached. Does nothing if `--help` was passed (parsing already printed help and stopped).
+
+```javascript
+const cli = new Cli()
+  .command("run <file>", "Run a file")
+  .param("--verbose -v boolean 0", "Verbose output")
+  .action(({ params, positionals }) => {
+    console.log(`running ${positionals.file}, verbose=${params.verbose}`);
+  });
+
+cli.run(process.argv.slice(2));
+```
 
 ### The low-level API
 

@@ -5,7 +5,7 @@ import { globalArg } from "./global-arg.ts";
 
 export { globalArg };
 
-type ParsedBlock<TBlock extends Block = any> = {
+export type ParsedBlock<TBlock extends Block = any> = {
   arg: string;
   block: TBlock;
   params: Record<string, string | boolean | number>;

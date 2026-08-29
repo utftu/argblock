@@ -85,10 +85,10 @@ test("supports multiple commands", () => {
   ]);
 });
 
-test("base registers a nested command group instead of a flat command", () => {
+test(".block() registers a nested command group instead of a flat command", () => {
   const cli = new Cli()
     .command("status", "Show status")
-    .base("remote", "Manage remotes", (remote) => {
+    .block("remote", "Manage remotes", (remote) => {
       remote
         .command("add <name> <url>", "Add a remote")
         .param("--tags -t boolean 0", "Track tags")
@@ -108,17 +108,17 @@ test("base registers a nested command group instead of a flat command", () => {
   ]);
 });
 
-test("a required positional is still enforced on a command nested inside a base", () => {
-  const cli = new Cli().base("remote", "Manage remotes", (remote) => {
+test("a required positional is still enforced on a command nested inside a .block()", () => {
+  const cli = new Cli().block("remote", "Manage remotes", (remote) => {
     remote.command("remove <name>", "Remove a remote");
   });
 
   expect(() => cli.parse(["remote", "remove"])).toThrow("Required positional <name> is missing");
 });
 
-test("a top-level command declared after a base stays a sibling, not nested inside it", () => {
+test("a top-level command declared after a .block() stays a sibling, not nested inside it", () => {
   const cli = new Cli()
-    .base("remote", "Manage remotes", (remote) => {
+    .block("remote", "Manage remotes", (remote) => {
       remote.command("add <name>", "Add a remote");
     })
     .command("status", "Show status");
@@ -132,6 +132,52 @@ test("throws on unknown param", () => {
   const cli = new Cli().command("run");
 
   expect(() => cli.parse(["run", "--unknown"])).toThrow();
+});
+
+test("run dispatches to the matched command's action with its params and positionals", () => {
+  const calls: unknown[] = [];
+
+  const cli = new Cli()
+    .command("run <file>", "Run a file")
+    .param("--verbose -v boolean 0", "Verbose output")
+    .action((ctx) => calls.push(ctx))
+    .command("build [...files]", "Build the project")
+    .action((ctx) => calls.push(ctx));
+
+  cli.run(["run", "app.ts", "--verbose"]);
+
+  expect(calls).toMatchObject([
+    { arg: "run", params: { verbose: true }, positionals: { file: "app.ts" } },
+  ]);
+});
+
+test("run dispatches to a command nested inside a .block()", () => {
+  const calls: unknown[] = [];
+
+  const cli = new Cli().block("remote", "Manage remotes", (remote) => {
+    remote.command("add <name>", "Add a remote").action((ctx) => calls.push(ctx));
+  });
+
+  cli.run(["remote", "add", "origin"]);
+
+  expect(calls).toMatchObject([{ arg: "add", params: {}, positionals: { name: "origin" } }]);
+});
+
+test("run throws when the matched command has no action", () => {
+  const cli = new Cli().command("run <file>", "Run a file");
+
+  expect(() => cli.run(["run", "app.ts"])).toThrow("No action defined for run");
+});
+
+test("run does nothing after --help (no action to dispatch to)", () => {
+  const cli = new Cli().command("run <file>", "Run a file").action(() => {
+    throw new Error("should not be called");
+  });
+  const log = spyOn(console, "log").mockImplementation(() => {});
+
+  expect(() => cli.run(["run", "--help"])).not.toThrow();
+
+  log.mockRestore();
 });
 
 test("--help prints usage for the current command", () => {
