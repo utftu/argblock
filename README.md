@@ -49,8 +49,22 @@ Output:
 
 Flags and positional arguments can be interleaved freely — `run app.ts --verbose`, `run --verbose app.ts`, and `run --verbose app.ts --output dist` all fill `file` the same way. Only the relative order *among* the positionals themselves matters (the first non-flag, non-subcommand token fills the first positional, the second fills the second, and so on).
 
-- **`.command(pattern, description?)`** declares a command and makes it the current context for subsequent `.param()` calls. The pattern is the command name followed by positional arguments: `<name>` for required, `[name]` for optional, and `[...name]` for variadic (must be last).
-- **`.param(pattern, description?)`** declares a parameter on the current command (or on the global block if called before any `.command()`). The pattern is `--name [-s] <type> [default]`, where `type` is one of `string`/`str`, `number`/`num`/`int`, `boolean`/`bool`.
+- **`.command(pattern, description?)`** declares a command and makes it the current context for subsequent `.param()` calls. The pattern is the command name followed by positional arguments: `<name>` for required, `[name]` for optional, and `[...name]` for variadic (must be last). Always attaches as a sibling at the current nesting level (top-level, or inside the `.base()` it was declared in).
+- **`.base(pattern, description, build)`** declares a command group: a command that has its own subcommands instead of being runnable itself. It creates the block (same pattern syntax as `.command()`) and calls `build(nested)` with a fresh `Cli` scoped to it — use `.command()`/`.base()`/`.param()` on `nested` to populate the group. Chaining continues on the outer `Cli` afterwards, so a `.command()` right after a `.base()` is a sibling of the group, not nested inside it:
+
+  ```javascript
+  const cli = new Cli()
+    .command("status", "Show status")
+    .base("remote", "Manage remotes", (remote) => {
+      remote
+        .command("add <name> <url>", "Add a remote")
+        .command("remove <name>", "Remove a remote");
+    });
+
+  cli.parse(["remote", "add", "origin", "https://example.com"]);
+  ```
+
+- **`.param(pattern, description?)`** declares a parameter on the current command (or on the global block if called before any `.command()`/`.base()`). The pattern is `--name [-s] <type> [default]`, where `type` is one of `string`/`str`, `number`/`num`/`int`, `boolean`/`bool`.
 - **`.parse(args)`** parses `args` and returns the same shape as the low-level `parse()` function, always including a leading entry for the global block.
 
 ### The low-level API

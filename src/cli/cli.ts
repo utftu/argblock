@@ -8,14 +8,20 @@ export class Cli {
   private root: Block;
   private current: Block;
 
-  constructor() {
-    this.root = new Block({
-      arg: globalArg,
-      params: [],
-      description: "",
-      children: [],
-    });
+  constructor(root?: Block) {
+    this.root =
+      root ??
+      new Block({
+        arg: globalArg,
+        params: [],
+        description: "",
+        children: [],
+      });
     this.current = this.root;
+  }
+
+  static new() {
+    return new Cli();
   }
 
   command(pattern: string, description = "") {
@@ -30,6 +36,25 @@ export class Cli {
     });
 
     this.root.children.push(block);
+    this.current = block;
+
+    return this;
+  }
+
+  base(pattern: string, description: string, build: (cli: Cli) => void) {
+    const { name, args } = parseCommand(pattern, description);
+
+    const block = new Block({
+      arg: name,
+      params: [],
+      positionals: args,
+      description,
+      children: [],
+    });
+
+    this.root.children.push(block);
+    build(new Cli(block));
+
     this.current = block;
 
     return this;

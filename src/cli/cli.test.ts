@@ -85,6 +85,49 @@ test("supports multiple commands", () => {
   ]);
 });
 
+test("base registers a nested command group instead of a flat command", () => {
+  const cli = new Cli()
+    .command("status", "Show status")
+    .base("remote", "Manage remotes", (remote) => {
+      remote
+        .command("add <name> <url>", "Add a remote")
+        .param("--tags -t boolean 0", "Track tags")
+        .command("remove <name>", "Remove a remote");
+    });
+
+  const result = cli.parse(["remote", "add", "origin", "url", "--tags"]);
+
+  expect(result).toMatchObject([
+    { arg: globalArg, params: {} },
+    { arg: "remote", params: {} },
+    {
+      arg: "add",
+      positionals: { name: "origin", url: "url" },
+      params: { tags: true },
+    },
+  ]);
+});
+
+test("a required positional is still enforced on a command nested inside a base", () => {
+  const cli = new Cli().base("remote", "Manage remotes", (remote) => {
+    remote.command("remove <name>", "Remove a remote");
+  });
+
+  expect(() => cli.parse(["remote", "remove"])).toThrow("Required positional <name> is missing");
+});
+
+test("a top-level command declared after a base stays a sibling, not nested inside it", () => {
+  const cli = new Cli()
+    .base("remote", "Manage remotes", (remote) => {
+      remote.command("add <name>", "Add a remote");
+    })
+    .command("status", "Show status");
+
+  const result = cli.parse(["status"]);
+
+  expect(result).toMatchObject([{ arg: globalArg, params: {} }, { arg: "status", params: {} }]);
+});
+
 test("throws on unknown param", () => {
   const cli = new Cli().command("run");
 
