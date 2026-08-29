@@ -82,3 +82,21 @@ it("error param", () => {
     parse(rawArgs.split(" "), [notGlobalBlock]);
   }).toThrow();
 });
+
+it("--help stops parsing and reports the current block via onHelp, without printing anything itself", () => {
+  const notGlobalBlock = new Block({
+    arg: "hello",
+    params: [new Param({ type: "string", name: "hello" })],
+    description: "",
+  });
+
+  let reportedBlock: Block | undefined;
+  const result = parse(["hello", "--help"], [notGlobalBlock], {
+    onHelp: (block) => {
+      reportedBlock = block;
+    },
+  });
+
+  expect(result).toEqual([]);
+  expect(reportedBlock).toBe(notGlobalBlock);
+});

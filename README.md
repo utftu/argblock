@@ -114,6 +114,7 @@ import { Param, Block, parse } from "argblock";
 - **Custom Matchers**: Allows custom matching logic for blocks via the `matcher` property.
 - **Nested Commands**: Supports hierarchical command structures through `children` in `Block`.
 - **Error Handling**: Throws descriptive errors for unknown or duplicated parameters.
+- **Help Output**: Passing `--help` anywhere in the arguments prints usage for the current block (positionals, options, and subcommands) to the console and stops parsing (returns `[]`).
 
 ### Code Structure
 
@@ -132,8 +133,13 @@ The library consists of several internal modules:
   - Handles argument parsing and block traversal.
   - Supports a default global block for top-level parameters.
   - Walks the argument list token by token: a token starting with `-` is parsed as a flag, a token matching a child block's name starts a new command, and any other token fills the current block's next unfilled positional (or is appended to a trailing variadic positional). Required positionals are checked once the block is done being read (on switching to a new command, or at the end of the arguments), so flags and positionals can be interleaved in any order.
+  - On `--help`, prints `formatHelp(currentBlock)` (see `parse/help.ts`) and stops parsing.
 
-- **`parse/positional.ts`**: Owns positional-argument declaration validation.
+- **`parse/help.ts`**: `formatHelp(block)` renders a usage string (positionals, options, subcommands, description) for a single `Block`, used for `--help` output.
+
+- **`parse/global-arg.ts`**: The `globalArg` sentinel string used to mark/detect the synthetic root block.
+
+- **`positional/positional.ts`**: Owns positional-argument declaration validation.
   - `validatePositionals(positionals)`: enforces that required positionals can't follow optional ones and that a variadic positional is always last. Runs both when `Block` is constructed and when a `Cli` command pattern is parsed, so both APIs reject invalid positional declarations up front.
 
 - **`cli/`**: Defines the `Cli` builder (`cli.ts`) and the string-pattern parsers it's built on (`parse-command.ts` for command/positional patterns, `parse-param.ts` for parameter patterns).

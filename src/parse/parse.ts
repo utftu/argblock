@@ -1,8 +1,9 @@
 import { Block } from "../block.ts";
 import { parseParam } from "../parse-param/parse-param.ts";
 import { convertParam } from "../convert/convert.ts";
+import { globalArg } from "./global-arg.ts";
 
-export const globalArg = "globalArg";
+export { globalArg };
 
 type ParsedBlock<TBlock extends Block = any> = {
   arg: string;
@@ -40,6 +41,7 @@ function checkRequiredPositionals(entry: ParsedBlock) {
 export const parse = <TBlock extends Block = any>(
   args: string[],
   blocks: TBlock[],
+  { onHelp }: { onHelp?: (block: Block) => void } = {},
 ): ParsedBlock<TBlock>[] => {
   if (blocks.length === 0) {
     throw new Error("Empty blocks");
@@ -66,7 +68,10 @@ export const parse = <TBlock extends Block = any>(
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
 
-    if (arg === "--help") return [];
+    if (arg === "--help") {
+      onHelp?.(currentBlock);
+      return [];
+    }
 
     if (arg.startsWith("-")) {
       const { values, elems: rest } = parseParam(args.slice(i), currentBlock);

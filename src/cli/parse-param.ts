@@ -30,7 +30,7 @@ function getParamNames(elems: string[]) {
     } else if (elem.startsWith("-")) {
       short = elem.slice(1);
       if (short.length !== 1) {
-        throw new Error(`Short param shoulb be signle letter, got ${short}`);
+        throw new Error(`Short param should be a single letter, got ${short}`);
       }
       continue;
     }
@@ -43,7 +43,7 @@ function getParamNames(elems: string[]) {
       };
     }
 
-    throw new Error(`Uknow property ${elem}, should be param`);
+    throw new Error(`Unknown property ${elem}, should be param`);
   }
 
   throw new Error("Only params, no types");
@@ -57,7 +57,7 @@ function getType(elems: string[]) {
   const localType = findType(elem);
 
   if (!localType) {
-    throw new Error(`Unknow type ${elem}`);
+    throw new Error(`Unknown type ${elem}`);
   }
 
   return { elems: elems.slice(1), type: localType };
@@ -77,20 +77,21 @@ function getDefault(
 }
 
 export function parseParam(pattern: string, description?: string) {
-  let strToParse = pattern.trim();
+  const trimmed = pattern.trim();
 
-  if (strToParse.startsWith("-") === false) {
-    throw new Error("Unknown format, option shoud start with -");
+  if (!trimmed.startsWith("-")) {
+    throw new Error("Unknown format, option should start with -");
   }
 
-  var elems = strToParse.split(" ").filter((part) => part !== " ");
+  let elems = trimmed.split(" ").filter((part) => part !== " ");
 
-  var { elems, full, short } = getParamNames(elems);
-  var { elems, type } = getType(elems);
+  const { full, short, elems: afterNames } = getParamNames(elems);
+  elems = afterNames;
+
+  const { type, elems: afterType } = getType(elems);
+  elems = afterType;
 
   const defaultResult = getDefault(elems);
-
-  var elems = elems;
   let defaultValue;
   if (defaultResult) {
     elems = defaultResult.elems;
@@ -106,7 +107,7 @@ export function parseParam(pattern: string, description?: string) {
     name: full,
     short,
     defaultValue,
-    description: description,
+    description,
   });
 
   return param;

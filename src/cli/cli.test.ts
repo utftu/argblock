@@ -1,4 +1,4 @@
-import { test, expect } from "bun:test";
+import { test, expect, spyOn } from "bun:test";
 import { Cli } from "./cli.ts";
 import { globalArg } from "../parse/parse.ts";
 
@@ -89,4 +89,17 @@ test("throws on unknown param", () => {
   const cli = new Cli().command("run");
 
   expect(() => cli.parse(["run", "--unknown"])).toThrow();
+});
+
+test("--help prints usage for the current command", () => {
+  const cli = new Cli().command("run <file>", "Run a file");
+  const log = spyOn(console, "log").mockImplementation(() => {});
+
+  const result = cli.parse(["run", "--help"]);
+
+  expect(result).toEqual([]);
+  expect(log).toHaveBeenCalledTimes(1);
+  expect(log.mock.calls[0]![0]).toContain("Usage: run <file>");
+
+  log.mockRestore();
 });

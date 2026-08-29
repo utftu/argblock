@@ -1,5 +1,6 @@
 import { Block } from "../block.ts";
 import { globalArg, parse } from "../parse/parse.ts";
+import { formatHelp } from "../parse/help.ts";
 import { parseCommand } from "./parse-command.ts";
 import { parseParam } from "./parse-param.ts";
 
@@ -42,6 +43,8 @@ export class Cli {
   }
 
   parse(args: string[]) {
-    return parse(args, [this.root]);
+    return parse(args, [this.root], {
+      onHelp: (block) => console.log(formatHelp(block)),
+    });
   }
 }
