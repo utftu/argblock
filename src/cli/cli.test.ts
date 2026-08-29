@@ -99,7 +99,8 @@ test("--help prints usage for the current command", () => {
 
   expect(result).toEqual([]);
   expect(log).toHaveBeenCalledTimes(1);
-  expect(log.mock.calls[0]![0]).toContain("Usage: run <file>");
+  expect(log.mock.calls[0]![0]).toContain("positionals:");
+  expect(log.mock.calls[0]![0]).toContain("<file>");
 
   log.mockRestore();
 });

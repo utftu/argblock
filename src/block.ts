@@ -5,6 +5,7 @@ export type Positional = {
   name: string;
   required: boolean;
   variadic: boolean;
+  description?: string;
 };
 
 type Matcher = (elems: string[]) => {
