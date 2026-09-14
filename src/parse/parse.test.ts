@@ -132,3 +132,23 @@ it("a param without a default stays absent from params", () => {
 
   expect(parse(["run"], [block])[1]!.params).toEqual({});
 });
+
+it("a matcher that swallows the rest keeps the consumed tokens as arg", () => {
+  const block = new Block({
+    arg: "task",
+    description: "",
+    params: [],
+    children: [
+      new Block({
+        arg: "task",
+        description: "",
+        params: [],
+        matcher: () => ({ match: true, elems: [] }),
+      }),
+    ],
+  });
+
+  const result = parse(["task", "a", "--b", "c"], [block]);
+
+  expect(result.map((entry) => entry.arg)).toEqual([globalArg, "task", "a --b c"]);
+});

@@ -362,3 +362,26 @@ test("a global-only flag after entering the link is unknown", () => {
     "Unknown param --debug",
   );
 });
+
+test("a required variadic positional with no tokens throws", () => {
+  const cli = new Cli().command("build <...files>", "Build");
+
+  expect(() => cli.parse(["build"])).toThrow(
+    "Required positional <...files> is missing",
+  );
+});
+
+test("after entering the link the token is re-read against its commands", () => {
+  const cli = new Cli({ commandLink: "remote" }).block(
+    "remote",
+    "Remotes",
+    (remote) => {
+      remote.command("add <name>", "Add a remote");
+    },
+  );
+
+  const result = cli.parse(["add", "origin"]);
+
+  expect(result.map((entry) => entry.arg)).toEqual([globalArg, "remote", "add"]);
+  expect(result[2]!.positionals).toEqual({ name: "origin" });
+});
