@@ -1,5 +1,6 @@
 import { Block } from "../block.ts";
-import { globalArg, parse, type ParsedBlock } from "../parse/parse.ts";
+import { parse, type ParsedBlock } from "../parse/parse.ts";
+import { globalArg } from "../parse/global-arg.ts";
 import { formatHelp } from "../parse/help.ts";
 import { parseCommand } from "./parse-command.ts";
 import { parseParam } from "./parse-param.ts";
@@ -10,7 +11,10 @@ export class Cli {
   private root: Block;
   private current: Block;
 
-  constructor(root?: Block) {
+  constructor({
+    root,
+    commandLink,
+  }: { root?: Block; commandLink?: string } = {}) {
     this.root =
       root ??
       new Block({
@@ -20,6 +24,10 @@ export class Cli {
         children: [],
       });
     this.current = this.root;
+
+    if (commandLink !== undefined) {
+      this.root.link = commandLink;
+    }
   }
 
   static new() {
@@ -55,7 +63,7 @@ export class Cli {
     });
 
     this.root.children.push(block);
-    build(new Cli(block));
+    build(new Cli({ root: block }));
 
     this.current = block;
 
@@ -70,6 +78,12 @@ export class Cli {
   }
 
   action(handler: Action) {
+    if (this.current === this.root && this.root.link !== undefined) {
+      throw new Error(
+        `Global action conflicts with command link "${this.root.link}"`,
+      );
+    }
+
     this.current.data.action = handler;
 
     return this;

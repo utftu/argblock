@@ -1,1 +1,1 @@
-export const globalArg = "globalArg";
+export const globalArg = "__globalArg";

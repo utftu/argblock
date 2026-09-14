@@ -38,7 +38,7 @@ Output:
 
 ```javascript
 [
-  { arg: "globalArg", params: {}, positionals: {} },
+  { arg: "__globalArg", params: {}, positionals: {} },
   {
     arg: "run",
     params: { verbose: true, output: "dist" },
@@ -65,6 +65,18 @@ Flags and positional arguments can be interleaved freely — `run app.ts --verbo
   ```
 
 - **`.param(pattern, description?)`** declares a parameter on the current command (or on the global block if called before any `.command()`/`.block()`). The pattern is `--name [-s] <type> [default]`, where `type` is one of `string`/`str`, `number`/`num`/`int`, `boolean`/`bool`. When a default is given and the flag is absent, the default lands in `params`, converted to the parameter's type — `--concurrency -c number 4` yields `{ concurrency: 4 }`. A default that does not match the type throws at `.param()`.
+- **`new Cli({ commandLink })`** links the global command to one of its commands, so `mycli app.ts` behaves like `mycli run app.ts`. Parsing enters the linked command when a token is neither a command nor a free global positional, when a flag is unknown to the global block but known to the linked command, or when the arguments end without any command. Global flags are checked first, so `mycli --verbose build` still runs `build` even if `run` also declares `--verbose`. A link to a missing command throws on parse; `.action()` on the global block together with `commandLink` throws at declaration.
+
+  ```javascript
+  new Cli({ commandLink: "run" })
+    .command("run <file>", "Run a file")
+    .param("--tag -t string all")
+    .action(({ params, positionals }) => {})
+    .command("build", "Build the project")
+    .action(() => {})
+    .run(process.argv.slice(2)); // `app.ts --tag beta` → run
+  ```
+
 - **`.action(handler)`** attaches a handler to the current command — `handler({ arg, params, positionals })` — called by `.run()` when that command is the one actually invoked.
 - **`.parse(args)`** parses `args` and returns the same shape as the low-level `parse()` function, always including a leading entry for the global block. Does not call any `.action()` handlers.
 - **`.run(args)`** parses `args` and dispatches to the `.action()` handler of whichever command was actually matched (the deepest entry in the parsed result). Throws if that command has no `.action()` attached. Does nothing if `--help` was passed (parsing already printed help and stopped).
@@ -124,6 +136,7 @@ import { Param, Block, parse } from "argblock";
 
    ```javascript
    [
+     { arg: "__globalArg", params: {}, positionals: {} },
      {
        arg: "run",
        params: { verbose: true },
@@ -159,7 +172,7 @@ The library consists of several internal modules:
 
 - **`parse/parse.ts`**: Contains the main `parse` function and global block logic.
   - Handles argument parsing and block traversal.
-  - Supports a default global block for top-level parameters.
+  - Supports a default global block for top-level parameters. The result always starts with the global block's entry — either the block passed as `[globalBlock]`, or a synthetic one wrapping the given top-level blocks.
   - Walks the argument list token by token: a token starting with `-` is parsed as a flag, a token matching a child block's name starts a new command, and any other token fills the current block's next unfilled positional (or is appended to a trailing variadic positional). Required positionals are checked once the block is done being read (on switching to a new command, or at the end of the arguments), so flags and positionals can be interleaved in any order.
   - On `--help`, prints `formatHelp(currentBlock)` (see `parse/help.ts`) and stops parsing.
 
@@ -207,6 +220,7 @@ Output:
 
 ```javascript
 [
+  { arg: "__globalArg", params: {}, positionals: {} },
   {
     arg: "run",
     params: {

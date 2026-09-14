@@ -25,6 +25,18 @@ export const checkBoolValue = (str: string) => {
   return false;
 };
 
+export const checkParam = (arg: string, block: Block): boolean => {
+  if (checkNo(arg)) {
+    return block.findParam(arg.slice(5)) !== undefined;
+  }
+
+  if (checkShort(arg)) {
+    return block.findShortParam(arg[1]!) !== undefined;
+  }
+
+  return block.findParam(getNameFromEq(arg.slice(2)).name) !== undefined;
+};
+
 export const parseParam = (elems: string[], block: Block): ParseReturn => {
   const [arg1 = ""] = elems;
   const rest = elems.slice(1);

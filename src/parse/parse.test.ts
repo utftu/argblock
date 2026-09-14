@@ -1,7 +1,8 @@
 import { expect, it } from "bun:test";
 import { Param } from "../param.ts";
 import { Block } from "../block.ts";
-import { globalArg, parse } from "./parse.ts";
+import { parse } from "./parse.ts";
+import { globalArg } from "./global-arg.ts";
 
 it("long with global", () => {
   const globalBlock = new Block({
@@ -46,6 +47,7 @@ it("long without global", () => {
   const result = parse(rawArgs.split(" "), [notGlobalBlock]);
 
   expect(result).toMatchObject([
+    { arg: globalArg, params: {} },
     {
       arg: "hello",
       params: {
@@ -114,7 +116,7 @@ it("defaults on hand-built params are converted to the param type", () => {
 
   const result = parse(["run", "-o", "dist"], [block]);
 
-  expect(result[0]!.params).toEqual({
+  expect(result[1]!.params).toEqual({
     verbose: false,
     output: "dist",
     retries: 2,
@@ -128,5 +130,5 @@ it("a param without a default stays absent from params", () => {
     params: [new Param({ name: "output", type: "string" })],
   });
 
-  expect(parse(["run"], [block])[0]!.params).toEqual({});
+  expect(parse(["run"], [block])[1]!.params).toEqual({});
 });

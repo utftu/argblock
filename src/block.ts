@@ -30,6 +30,7 @@ export class Block<TData extends Record<any, any> = any> {
   description: string;
   matcher: Matcher;
   data: TData;
+  link?: string;
 
   children: Block[] = [];
   constructor({
@@ -40,6 +41,7 @@ export class Block<TData extends Record<any, any> = any> {
     matcher,
     children = [],
     data = {} as TData,
+    link,
   }: {
     arg: string;
     params: Param[];
@@ -48,6 +50,7 @@ export class Block<TData extends Record<any, any> = any> {
     matcher?: Matcher;
     children?: Block[];
     data?: TData;
+    link?: string;
   }) {
     validatePositionals(positionals);
 
@@ -57,6 +60,7 @@ export class Block<TData extends Record<any, any> = any> {
     this.description = description;
     this.children = children;
     this.data = data;
+    this.link = link;
 
     if (matcher) {
       this.matcher = matcher;

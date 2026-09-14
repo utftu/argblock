@@ -1,6 +1,6 @@
 import { test, expect, spyOn } from "bun:test";
 import { Cli } from "./cli.ts";
-import { globalArg } from "../parse/parse.ts";
+import { globalArg } from "../parse/global-arg.ts";
 
 test("parses a single command with params and positionals", () => {
   const cli = new Cli()
@@ -271,5 +271,94 @@ test("a default that does not match the type throws at declaration", () => {
   );
   expect(() => new Cli().param("--verbose -v boolean yes")).toThrow(
     "Param must be boolean: default for --verbose",
+  );
+});
+
+function createLinkedCli(): Cli {
+  return new Cli({ commandLink: "run" })
+    .param("--verbose boolean 0")
+    .command("run [file]", "Run a file")
+    .param("--tag -t string all")
+    .param("--verbose boolean 0")
+    .command("build", "Build");
+}
+
+test("a bare positional goes to the linked command", () => {
+  const result = createLinkedCli().parse(["app.ts"]);
+
+  expect(result.map((entry) => entry.arg)).toEqual([globalArg, "run"]);
+  expect(result[1]!.positionals).toEqual({ file: "app.ts" });
+});
+
+test("a flag only the linked command knows enters the link", () => {
+  const result = createLinkedCli().parse(["--tag", "beta", "app.ts"]);
+
+  expect(result.map((entry) => entry.arg)).toEqual([globalArg, "run"]);
+  expect(result[1]!.params).toEqual({ tag: "beta", verbose: false });
+  expect(result[1]!.positionals).toEqual({ file: "app.ts" });
+});
+
+test("a flag known to the global block stays global and keeps explicit commands", () => {
+  const result = createLinkedCli().parse(["--verbose", "build"]);
+
+  expect(result.map((entry) => entry.arg)).toEqual([globalArg, "build"]);
+  expect(result[0]!.params).toEqual({ verbose: true });
+});
+
+test("an explicit command is not taken over by the link", () => {
+  const result = createLinkedCli().parse(["build"]);
+
+  expect(result.map((entry) => entry.arg)).toEqual([globalArg, "build"]);
+});
+
+test("no args enter the linked command", () => {
+  const result = createLinkedCli().parse([]);
+
+  expect(result.map((entry) => entry.arg)).toEqual([globalArg, "run"]);
+});
+
+test("no args still enforce required positionals of the linked command", () => {
+  const cli = new Cli({ commandLink: "run" }).command("run <file>", "Run");
+
+  expect(() => cli.parse([])).toThrow("Required positional <file> is missing");
+});
+
+test("run() dispatches to the linked command action", () => {
+  let seen: string | undefined;
+
+  const cli = new Cli({ commandLink: "run" })
+    .command("run <file>", "Run")
+    .action(({ positionals }) => {
+      seen = positionals.file as string;
+    });
+
+  cli.run(["app.ts"]);
+
+  expect(seen).toBe("app.ts");
+});
+
+test("a link to a missing command throws on parse", () => {
+  const cli = new Cli({ commandLink: "rn" }).command("run", "Run");
+
+  expect(() => cli.parse([])).toThrow('Command link "rn" not found');
+});
+
+test("a global action cannot be combined with a command link", () => {
+  expect(() => new Cli({ commandLink: "run" }).action(() => {})).toThrow(
+    'Global action conflicts with command link "run"',
+  );
+});
+
+test("a global-only flag after entering the link is unknown", () => {
+  const cli = new Cli({ commandLink: "run" })
+    .param("--debug boolean 0")
+    .command("run [file]", "Run")
+    .param("--tag -t string all");
+
+  expect(cli.parse(["--debug", "--tag", "beta", "app.ts"])[0]!.params).toEqual({
+    debug: true,
+  });
+  expect(() => cli.parse(["--tag", "beta", "--debug", "app.ts"])).toThrow(
+    "Unknown param --debug",
   );
 });
