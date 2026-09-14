@@ -1,6 +1,6 @@
 import { Block } from "../block.ts";
 import { parseParam } from "../parse-param/parse-param.ts";
-import { convertParam } from "../convert/convert.ts";
+import { convertDefault, convertParam } from "../convert/convert.ts";
 import { globalArg } from "./global-arg.ts";
 
 export { globalArg };
@@ -35,6 +35,20 @@ function checkRequiredPositionals(entry: ParsedBlock) {
         : positional.name;
       throw new Error(`Required positional <${label}> is missing`);
     }
+  }
+}
+
+function applyDefaults(entry: ParsedBlock): void {
+  for (const param of entry.block.params) {
+    if (param.defaultValue === undefined) {
+      continue;
+    }
+
+    if (param.name in entry.params) {
+      continue;
+    }
+
+    entry.params[param.name] = convertDefault(String(param.defaultValue), param);
   }
 }
 
@@ -124,6 +138,10 @@ export const parse = <TBlock extends Block = any>(
   }
 
   checkRequiredPositionals(parsedBlocks.at(-1)!);
+
+  for (const entry of parsedBlocks) {
+    applyDefaults(entry);
+  }
 
   return globalBlockProvided ? parsedBlocks : parsedBlocks.slice(1);
 };

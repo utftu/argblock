@@ -193,3 +193,83 @@ test("--help prints usage for the current command", () => {
 
   log.mockRestore();
 });
+
+test("defaults from the pattern land in params when the flag is absent", () => {
+  const cli = new Cli()
+    .command("run", "Run")
+    .param("--threshold number 1")
+    .param("--concurrency -c number 4")
+    .param("--tag -t string all")
+    .param("--verbose -v boolean 0");
+
+  const result = cli.parse(["run"]);
+
+  expect(result.at(-1)!.params).toEqual({
+    threshold: 1,
+    concurrency: 4,
+    tag: "all",
+    verbose: false,
+  });
+});
+
+test("an explicit value wins over the default", () => {
+  const cli = new Cli()
+    .command("run", "Run")
+    .param("--tag -t string all")
+    .param("--concurrency -c number 4");
+
+  expect(cli.parse(["run", "--tag", "beta"]).at(-1)!.params).toEqual({
+    tag: "beta",
+    concurrency: 4,
+  });
+  expect(cli.parse(["run", "-c=8"]).at(-1)!.params).toEqual({
+    tag: "all",
+    concurrency: 8,
+  });
+});
+
+test("--no- turns off a boolean that defaults to true", () => {
+  const cli = new Cli().command("run", "Run").param("--color boolean 1");
+
+  expect(cli.parse(["run"]).at(-1)!.params).toEqual({ color: true });
+  expect(cli.parse(["run", "--no-color"]).at(-1)!.params).toEqual({
+    color: false,
+  });
+});
+
+test("defaults on the global block are filled too", () => {
+  const cli = new Cli()
+    .param("--level number 3")
+    .command("build", "Build")
+    .param("--watch -w boolean 0");
+
+  const result = cli.parse(["build"]);
+
+  expect(result[0]!.params).toEqual({ level: 3 });
+  expect(result[1]!.params).toEqual({ watch: false });
+});
+
+test("run() hands defaults to the action", () => {
+  let seen: Record<string, unknown> | undefined;
+
+  const cli = new Cli()
+    .command("run", "Run")
+    .param("--tag -t string all")
+    .param("--retries number 2")
+    .action(({ params }) => {
+      seen = params;
+    });
+
+  cli.run(["run"]);
+
+  expect(seen).toEqual({ tag: "all", retries: 2 });
+});
+
+test("a default that does not match the type throws at declaration", () => {
+  expect(() => new Cli().param("--threshold number abc")).toThrow(
+    "Param must be number: default for --threshold",
+  );
+  expect(() => new Cli().param("--verbose -v boolean yes")).toThrow(
+    "Param must be boolean: default for --verbose",
+  );
+});

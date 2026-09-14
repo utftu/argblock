@@ -34,3 +34,10 @@ export const convertParam = (
 
   throw new Error("Unknown param type: " + param.type);
 };
+
+export function convertDefault(
+  value: string,
+  param: Param
+): string | boolean | number {
+  return convertParam(value, param, `default for --${param.name}`);
+}

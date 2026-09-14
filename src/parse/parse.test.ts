@@ -100,3 +100,33 @@ it("--help stops parsing and reports the current block via onHelp, without print
   expect(result).toEqual([]);
   expect(reportedBlock).toBe(notGlobalBlock);
 });
+
+it("defaults on hand-built params are converted to the param type", () => {
+  const block = new Block({
+    arg: "run",
+    description: "",
+    params: [
+      new Param({ name: "verbose", type: "boolean", short: "v", defaultValue: "0" as any }),
+      new Param({ name: "output", type: "string", short: "o", defaultValue: "./output" }),
+      new Param({ name: "retries", type: "number", defaultValue: 2 }),
+    ],
+  });
+
+  const result = parse(["run", "-o", "dist"], [block]);
+
+  expect(result[0]!.params).toEqual({
+    verbose: false,
+    output: "dist",
+    retries: 2,
+  });
+});
+
+it("a param without a default stays absent from params", () => {
+  const block = new Block({
+    arg: "run",
+    description: "",
+    params: [new Param({ name: "output", type: "string" })],
+  });
+
+  expect(parse(["run"], [block])[0]!.params).toEqual({});
+});

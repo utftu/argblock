@@ -1,4 +1,5 @@
 import { Param } from "../param.ts";
+import { convertDefault } from "../convert/convert.ts";
 
 const types = {
   number: ["number", "num", "int"],
@@ -106,9 +107,12 @@ export function parseParam(pattern: string, description?: string) {
     type,
     name: full,
     short,
-    defaultValue,
     description,
   });
+
+  if (defaultValue !== undefined) {
+    param.defaultValue = convertDefault(defaultValue, param);
+  }
 
   return param;
 }

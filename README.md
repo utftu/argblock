@@ -64,7 +64,7 @@ Flags and positional arguments can be interleaved freely — `run app.ts --verbo
   cli.parse(["remote", "add", "origin", "https://example.com"]);
   ```
 
-- **`.param(pattern, description?)`** declares a parameter on the current command (or on the global block if called before any `.command()`/`.block()`). The pattern is `--name [-s] <type> [default]`, where `type` is one of `string`/`str`, `number`/`num`/`int`, `boolean`/`bool`.
+- **`.param(pattern, description?)`** declares a parameter on the current command (or on the global block if called before any `.command()`/`.block()`). The pattern is `--name [-s] <type> [default]`, where `type` is one of `string`/`str`, `number`/`num`/`int`, `boolean`/`bool`. When a default is given and the flag is absent, the default lands in `params`, converted to the parameter's type — `--concurrency -c number 4` yields `{ concurrency: 4 }`. A default that does not match the type throws at `.param()`.
 - **`.action(handler)`** attaches a handler to the current command — `handler({ arg, params, positionals })` — called by `.run()` when that command is the one actually invoked.
 - **`.parse(args)`** parses `args` and returns the same shape as the low-level `parse()` function, always including a leading entry for the global block. Does not call any `.action()` handlers.
 - **`.run(args)`** parses `args` and dispatches to the `.action()` handler of whichever command was actually matched (the deepest entry in the parsed result). Throws if that command has no `.action()` attached. Does nothing if `--help` was passed (parsing already printed help and stopped).
@@ -97,7 +97,7 @@ import { Param, Block, parse } from "argblock";
      name: "verbose",
      type: "boolean",
      short: "v",
-     defaultValue: "0",
+     defaultValue: false,
    });
    ```
 
@@ -126,7 +126,7 @@ import { Param, Block, parse } from "argblock";
    [
      {
        arg: "run",
-       params: { verbose: "1" },
+       params: { verbose: true },
        positionals: {},
      },
    ];
@@ -155,6 +155,7 @@ The library consists of several internal modules:
 - **`param.ts`**: Defines the `Param` class for parameter configuration.
 
   - Properties: `name`, `type`, `short`, `defaultValue`, `description`.
+  - `defaultValue` is used by `parse` for every param the arguments did not set; it is converted to the param's type, so a string like `"0"` on a boolean param becomes `false`.
 
 - **`parse/parse.ts`**: Contains the main `parse` function and global block logic.
   - Handles argument parsing and block traversal.
@@ -180,7 +181,7 @@ const verboseParam = new Param({
   name: "verbose",
   type: "boolean",
   short: "v",
-  defaultValue: "0",
+  defaultValue: false,
 });
 
 const outputParam = new Param({
@@ -209,7 +210,7 @@ Output:
   {
     arg: "run",
     params: {
-      verbose: "1",
+      verbose: true,
       output: "dist",
     },
     positionals: {},
@@ -253,5 +254,5 @@ const customBlock = new Block({
 ### Limitations
 
 - Boolean parameters expect values like `0`, `1`, `true`, or `false`.
-- Short parameters (`-abc`) assume boolean type with a default value of `1` unless specified.
+- Short parameters (`-abc`) assume boolean type and are set to `1` unless specified.
 - The parser does not support advanced features like parameter validation beyond type checking.
