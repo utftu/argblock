@@ -156,7 +156,7 @@ import { Param, Block, parse, globalArg } from "argblock";
 - **Custom Matchers**: Allows custom matching logic for blocks via the `matcher` property.
 - **Nested Commands**: Supports hierarchical command structures through `children` in `Block`.
 - **Error Handling**: Throws descriptive errors for unknown or duplicated parameters.
-- **Help Output**: Passing `--help` anywhere in the arguments prints usage for the current block (positionals, options, and subcommands) to the console and stops parsing (returns `[]`).
+- **Help Output**: Passing `--help` anywhere in the arguments prints usage for the current block (positionals, options with their defaults, and subcommands) to the console and stops parsing (returns `[]`).
 
 ### Code Structure
 
@@ -178,7 +178,7 @@ The library consists of several internal modules:
   - Walks the argument list token by token: a token starting with `-` is parsed as a flag of the current block; any other token first tries the current block's children (commands win over positionals), then fills the next unfilled positional (or is appended to a trailing variadic positional). If the current block has a `link` and nothing took the token — or a flag is unknown to the current block but known to the linked one, or the arguments end without a command — parsing enters the linked block and reads the same token again there. A bare `--` ends flag and command parsing: every remaining token goes to positionals, entering the linked block when the current one has no free slot. Required positionals are checked once the block is done being read (on switching to a new command, or at the end of the arguments), so flags and positionals can be interleaved in any order.
   - On `--help`, prints `formatHelp(currentBlock)` (see `parse/help.ts`) and stops parsing.
 
-- **`parse/help.ts`**: `formatHelp(block)` renders a usage string (positionals, options, subcommands, description) for a single `Block`, used for `--help` output.
+- **`parse/help.ts`**: `formatHelp(block)` renders a usage string (positionals, options, subcommands, description) for a single `Block`, used for `--help` output. An option with a default ends with `(default: 4)`, converted to the option's type.
 
 - **`parse/global-arg.ts`**: The `globalArg` sentinel string used to mark/detect the synthetic root block.
 
@@ -250,7 +250,7 @@ The parser throws errors in the following cases:
 
 ### Custom Matchers
 
-You can define custom matchers for blocks to handle complex argument patterns. A matcher receives the remaining argument list and returns whether it matched, along with the remaining elements to continue parsing from. The tokens it consumed, joined by spaces, become the entry's `arg`. A matcher that returns `match: true` must consume at least one token — otherwise parsing never advances:
+You can define custom matchers for blocks to handle complex argument patterns. A matcher receives the remaining argument list and returns whether it matched, along with the remaining elements to continue parsing from. The tokens it consumed, joined by spaces, become the entry's `arg`. A matcher may also match without consuming anything: parsing then enters that block with an empty `arg` and reads the same token there. Every such step goes one level deeper, so parsing always finishes — as long as no block is its own descendant:
 
 ```javascript
 import { Block } from "argblock";
@@ -279,4 +279,3 @@ const customBlock = new Block({
 - After a command, global flags are accepted only for the linked command: `mycli build --debug` throws unless `build` declares `--debug` itself.
 - A positional whose value equals a command name is taken as the command unless it comes after `--`.
 - A `.block()` group can't set a link through `Cli`; set `link` on the low-level `Block` instead.
-- Defaults are not shown in `--help` output.

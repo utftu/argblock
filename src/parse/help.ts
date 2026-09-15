@@ -1,4 +1,6 @@
 import type { Block, Positional } from "../block.ts";
+import type { Param } from "../param.ts";
+import { convertDefault } from "../convert/convert.ts";
 
 function formatPositional(positional: Positional): string {
   const label = positional.variadic ? `...${positional.name}` : positional.name;
@@ -7,6 +9,14 @@ function formatPositional(positional: Positional): string {
 
 function withDescription(label: string, description?: string): string {
   return description ? `${label} - ${description}` : label;
+}
+
+function formatDefault(param: Param): string {
+  if (param.defaultValue === undefined) {
+    return "";
+  }
+
+  return ` (default: ${convertDefault(String(param.defaultValue), param)})`;
 }
 
 export function formatHelp(block: Block): string {
@@ -32,7 +42,7 @@ export function formatHelp(block: Block): string {
     lines.push("params:");
     for (const param of block.params) {
       const names = param.short ? `--${param.name}, -${param.short}` : `--${param.name}`;
-      lines.push(`  ${withDescription(`${names} ${param.type}`, param.description)}`);
+      lines.push(`  ${withDescription(`${names} ${param.type}`, param.description)}${formatDefault(param)}`);
     }
   }
 

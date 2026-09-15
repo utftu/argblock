@@ -63,3 +63,26 @@ test("omits a section entirely when the block has nothing for it", () => {
 
   expect(formatHelp(block)).toBe("");
 });
+
+test("prints a param default after its description, converted to the param type", () => {
+  const block = new Block({
+    arg: "run",
+    description: "",
+    params: [
+      new Param({ name: "format", type: "string", description: "Output format", defaultValue: "md" }),
+      new Param({ name: "level", short: "l", type: "number", defaultValue: 3 }),
+      new Param({ name: "verbose", type: "boolean", defaultValue: "0" as any }),
+      new Param({ name: "out", type: "string", description: "Output file" }),
+    ],
+  });
+
+  expect(formatHelp(block)).toBe(
+    [
+      "params:",
+      "  --format string - Output format (default: md)",
+      "  --level, -l number (default: 3)",
+      "  --verbose boolean (default: false)",
+      "  --out string - Output file",
+    ].join("\n"),
+  );
+});
