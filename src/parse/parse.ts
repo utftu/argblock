@@ -94,6 +94,21 @@ function checkRequiredPositionals(entry: ParsedBlock): void {
   }
 }
 
+// Мы внутри слинкованной команды: в результате ровно корень и сама она.
+// Пока так, глобальные флаги по-прежнему принимаются.
+function checkInsideLink(parsedBlocks: ParsedBlock[]): boolean {
+  if (parsedBlocks.length !== 2) {
+    return false;
+  }
+
+  const link = findLink(parsedBlocks[0]!.block);
+  if (link === undefined) {
+    return false;
+  }
+
+  return parsedBlocks[1]!.block === link;
+}
+
 // Переход в другую команду. Два шага:
 // 1. Закрыть блок, из которого уходим, — последний в parsedBlocks. Вернуться
 //    в него уже нельзя, так что проверяем его обязательные позиционные сейчас.
@@ -169,6 +184,23 @@ function readPositional(entry: ParsedBlock, token: string): boolean {
   return true;
 }
 
+// Разбирает всё, что стоит после `--`: каждый токен — только позиционный,
+// даже если похож на флаг (`--weird`) или совпадает с именем команды
+// (`build`). Если у текущего блока свободного слота нет, входим в линк и
+// пробуем там; линка нет — токен некуда деть, ошибка.
+function readSeparated(parsedBlocks: ParsedBlock[], tokens: string[]): void {
+  for (const token of tokens) {
+    while (!readPositional(parsedBlocks.at(-1)!, token)) {
+      const link = findLink(parsedBlocks.at(-1)!.block);
+      if (link === undefined) {
+        throw new Error(`Unknown arg: ${token}`);
+      }
+
+      enterBlock(parsedBlocks, { block: link, arg: link.arg });
+    }
+  }
+}
+
 // Дописывает дефолты флагов, которые пользователь не передал.
 // Вызывается один раз в самом конце, когда всё явно переданное уже лежит
 // в params, — поэтому явное значение всегда побеждает дефолт.
@@ -221,12 +253,29 @@ export function parse<TBlock extends Block = any>(
       return [];
     }
 
+    // Разделитель: дальше флагов и команд нет, только позиционные.
+    // Сам `--` в результат не кладём, остаток разбираем целиком.
+    if (token === "--") {
+      readSeparated(parsedBlocks, rest.slice(1));
+      rest = [];
+      continue;
+    }
+
     // Куда уходить, если токен текущему блоку не подходит. У корня с
     // commandLink это "run"; у обычной команды без линка — undefined.
     const link = findLink(current.block);
 
     // --- Флаг ---
     if (token.startsWith("-")) {
+      // Внутри слинкованной команды глобальный блок проверяется первым, как и
+      // до входа в линк: `--debug --tag beta --debug2` валидно, даже если
+      // --debug2 глобальный, а --tag уже увёл нас в run.
+      const root = parsedBlocks[0]!;
+      if (checkInsideLink(parsedBlocks) && checkParam(token, root.block)) {
+        rest = readParam(root, rest);
+        continue;
+      }
+
       // В линк уходим, только если флаг не знает текущий блок, но знает
       // слинкованный. Текущий проверяется первым: `--verbose build` при
       // --verbose у обоих оставит флаг в корне и не угонит команду build.

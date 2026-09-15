@@ -349,18 +349,67 @@ test("a global action cannot be combined with a command link", () => {
   );
 });
 
-test("a global-only flag after entering the link is unknown", () => {
+test("global flags are still accepted inside the linked command", () => {
   const cli = new Cli({ commandLink: "run" })
     .param("--debug boolean 0")
+    .param("--debug2 boolean 0")
     .command("run [file]", "Run")
     .param("--tag -t string all");
 
-  expect(cli.parse(["--debug", "--tag", "beta", "app.ts"])[0]!.params).toEqual({
-    debug: true,
-  });
-  expect(() => cli.parse(["--tag", "beta", "--debug", "app.ts"])).toThrow(
-    "Unknown param --debug",
+  const result = cli.parse(["--debug", "--tag", "beta", "--debug2", "app.ts"]);
+
+  expect(result.map((entry) => entry.arg)).toEqual([globalArg, "run"]);
+  expect(result[0]!.params).toEqual({ debug: true, debug2: true });
+  expect(result[1]!.params).toEqual({ tag: "beta" });
+  expect(result[1]!.positionals).toEqual({ file: "app.ts" });
+});
+
+test("a global flag alone still enters the link at the end", () => {
+  const cli = new Cli({ commandLink: "run" })
+    .param("--debug boolean 0")
+    .command("run [file]", "Run");
+
+  const result = cli.parse(["--debug"]);
+
+  expect(result.map((entry) => entry.arg)).toEqual([globalArg, "run"]);
+  expect(result[0]!.params).toEqual({ debug: true });
+});
+
+test("a global flag passed twice around the link is a duplicate", () => {
+  const cli = new Cli({ commandLink: "run" })
+    .param("--debug boolean 0")
+    .command("run [file]", "Run");
+
+  expect(() => cli.parse(["--debug", "app.ts", "--debug"])).toThrow(
+    "Param duplicated: --debug",
   );
+});
+
+test("the link name after link flags is not a command switch", () => {
+  const withFile = new Cli({ commandLink: "run" })
+    .command("run [file]", "Run")
+    .param("--tag string all");
+  const withoutFile = new Cli({ commandLink: "run" })
+    .command("run", "Run")
+    .param("--tag string all");
+
+  const result = withFile.parse(["--tag", "beta", "run"]);
+
+  expect(result.map((entry) => entry.arg)).toEqual([globalArg, "run"]);
+  expect(result[1]!.positionals).toEqual({ file: "run" });
+  expect(() => withoutFile.parse(["--tag", "beta", "run"])).toThrow(
+    "Unknown arg: run",
+  );
+});
+
+test("global flags after an explicit run are accepted, after other commands are not", () => {
+  const cli = new Cli({ commandLink: "run" })
+    .param("--debug boolean 0")
+    .command("run [file]", "Run")
+    .command("build", "Build");
+
+  expect(cli.parse(["run", "--debug"])[0]!.params).toEqual({ debug: true });
+  expect(() => cli.parse(["build", "--debug"])).toThrow("Unknown param --debug");
 });
 
 test("a required variadic positional with no tokens throws", () => {
@@ -384,4 +433,83 @@ test("after entering the link the token is re-read against its commands", () => 
 
   expect(result.map((entry) => entry.arg)).toEqual([globalArg, "remote", "add"]);
   expect(result[2]!.positionals).toEqual({ name: "origin" });
+});
+
+test("tokens after -- are positionals even if they look like flags", () => {
+  const cli = new Cli().command("run [...files]", "Run");
+
+  const entry = cli.parse(["run", "a", "--", "--weird", "-x", "--help"]).at(-1)!;
+
+  expect(entry.positionals).toEqual({ files: ["a", "--weird", "-x", "--help"] });
+});
+
+test("flags before -- are still parsed", () => {
+  const cli = new Cli().command("run [file]", "Run").param("--tag string all");
+
+  const entry = cli.parse(["run", "--tag", "x", "--", "--tag"]).at(-1)!;
+
+  expect(entry.params).toEqual({ tag: "x" });
+  expect(entry.positionals).toEqual({ file: "--tag" });
+});
+
+test("-- passes a command name as a positional through the link", () => {
+  const cli = new Cli({ commandLink: "run" })
+    .command("run [file]", "Run")
+    .command("build", "Build");
+
+  const result = cli.parse(["--", "build"]);
+
+  expect(result.map((entry) => entry.arg)).toEqual([globalArg, "run"]);
+  expect(result[1]!.positionals).toEqual({ file: "build" });
+});
+
+test("a token after -- that no positional accepts throws", () => {
+  const cli = new Cli().command("run [file]", "Run");
+
+  expect(() => cli.parse(["run", "--", "a", "b"])).toThrow("Unknown arg: b");
+});
+
+test("a linked command action sees global params through globalParams", () => {
+  let seen: { params: unknown; global: unknown } | undefined;
+
+  const cli = new Cli({ commandLink: "run" })
+    .param("--debug boolean 0")
+    .command("run [file]", "Run")
+    .param("--tag string all")
+    .action(({ params, globalParams }) => {
+      seen = { params, global: globalParams };
+    });
+
+  cli.run(["--tag", "beta", "--debug", "app.ts"]);
+
+  expect(seen).toEqual({ params: { tag: "beta" }, global: { debug: true } });
+});
+
+test("an explicit command action sees global defaults through globalParams", () => {
+  let seen: unknown;
+
+  const cli = new Cli()
+    .param("--level number 3")
+    .command("build", "Build")
+    .action(({ globalParams }) => {
+      seen = globalParams;
+    });
+
+  cli.run(["build"]);
+
+  expect(seen).toEqual({ level: 3 });
+});
+
+test("a global action gets its own params as globalParams", () => {
+  let seen: { arg: string; params: unknown } | undefined;
+
+  const cli = new Cli()
+    .param("--level number 3")
+    .action(({ arg, globalParams }) => {
+      seen = { arg, params: globalParams };
+    });
+
+  cli.run(["--level", "7"]);
+
+  expect(seen).toEqual({ arg: globalArg, params: { level: 7 } });
 });

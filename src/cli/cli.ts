@@ -5,7 +5,9 @@ import { formatHelp } from "../parse/help.ts";
 import { parseCommand } from "./parse-command.ts";
 import { parseParam } from "./parse-param.ts";
 
-type Action = (parsed: ParsedBlock) => void;
+type ActionArgs = ParsedBlock & { globalParams: ParsedBlock["params"] };
+
+type Action = (parsed: ActionArgs) => void;
 
 export class Cli {
   private root: Block;
@@ -106,6 +108,6 @@ export class Cli {
       throw new Error(`No action defined for ${label}`);
     }
 
-    handler(matched);
+    handler({ ...matched, globalParams: result[0]!.params });
   }
 }

@@ -49,7 +49,7 @@ Output:
 
 Flags and positional arguments can be interleaved freely — `run app.ts --verbose`, `run --verbose app.ts`, and `run --verbose app.ts --output dist` all fill `file` the same way. Only the relative order *among* the positionals themselves matters (the first non-flag, non-subcommand token fills the first positional, the second fills the second, and so on).
 
-- **`.command(pattern, description?)`** declares a command and makes it the current context for subsequent `.param()` calls. The pattern is the command name followed by positional arguments: `<name>` for required, `[name]` for optional, and `[...name]` for variadic (must be last). Always attaches as a sibling at the current nesting level (top-level, or inside the `.block()` it was declared in).
+- **`.command(pattern, description?)`** declares a command and makes it the current context for subsequent `.param()` calls. The pattern is the command name followed by positional arguments: `<name>` for required, `[name]` for optional, `[...name]` for optional variadic, and `<...name>` for required variadic, which needs at least one token. A variadic positional must be last. Always attaches as a sibling at the current nesting level (top-level, or inside the `.block()` it was declared in).
 - **`.block(pattern, description, build)`** declares a command group: a command that has its own subcommands instead of being runnable itself. It creates the block (same pattern syntax as `.command()`) and calls `build(nested)` with a fresh `Cli` scoped to it — use `.command()`/`.block()`/`.param()` on `nested` to populate the group. Chaining continues on the outer `Cli` afterwards, so a `.command()` right after a `.block()` is a sibling of the group, not nested inside it:
 
   ```javascript
@@ -65,7 +65,7 @@ Flags and positional arguments can be interleaved freely — `run app.ts --verbo
   ```
 
 - **`.param(pattern, description?)`** declares a parameter on the current command (or on the global block if called before any `.command()`/`.block()`). The pattern is `--name [-s] <type> [default]`, where `type` is one of `string`/`str`, `number`/`num`/`int`, `boolean`/`bool`. When a default is given and the flag is absent, the default lands in `params`, converted to the parameter's type — `--concurrency -c number 4` yields `{ concurrency: 4 }`. A default that does not match the type throws at `.param()`.
-- **`new Cli({ commandLink })`** links the global command to one of its commands, so `mycli app.ts` behaves like `mycli run app.ts`. Parsing enters the linked command when a token is neither a command nor a free global positional, when a flag is unknown to the global block but known to the linked command, or when the arguments end without any command. Global flags are checked first, so `mycli --verbose build` still runs `build` even if `run` also declares `--verbose`. A link to a missing command throws on parse; `.action()` on the global block together with `commandLink` throws at declaration.
+- **`new Cli({ commandLink })`** links the global command to one of its commands, so `mycli app.ts` behaves like `mycli run app.ts`. Parsing enters the linked command when a token is neither a command nor a free global positional, when a flag is unknown to the global block but known to the linked command, or when the arguments end without any command. Global flags are checked first, so `mycli --verbose build` still runs `build` even if `run` also declares `--verbose`. After entering the link, the same token is read again from the linked command — first its subcommands, then its positionals — so with `commandLink: "remote"` and a `.block("remote", ...)` group, `add origin` parses as `remote add origin`. Inside the linked command global flags are still accepted and still checked first: with `--debug` on the global block and `--tag` on `run`, both `--debug --tag beta app.ts` and `--tag beta --debug app.ts` put `debug` on the global entry. The same holds after typing `run` explicitly (`mycli run --debug`). Once flags for `run` have started, `run` itself is no longer a command switch — it becomes `run`'s positional, or `Unknown arg` if there is none. A link to a missing command throws on parse; `.action()` on the global block together with `commandLink` throws at declaration.
 
   ```javascript
   new Cli({ commandLink: "run" })
@@ -77,7 +77,7 @@ Flags and positional arguments can be interleaved freely — `run app.ts --verbo
     .run(process.argv.slice(2)); // `app.ts --tag beta` → run
   ```
 
-- **`.action(handler)`** attaches a handler to the current command — `handler({ arg, params, positionals })` — called by `.run()` when that command is the one actually invoked.
+- **`.action(handler)`** attaches a handler to the current command — `handler({ arg, params, positionals, globalParams })` — called by `.run()` when that command is the one actually invoked. Called before any `.command()`/`.block()`, it attaches to the global command, which runs when no command is given. There is no way back to the global block after a `.command()`, so a later `.action()` replaces that command's handler instead. The handler receives the deepest parsed entry, plus `globalParams` — the global block's params, including defaults of global flags (for a global action, `globalParams` are its own `params`).
 - **`.parse(args)`** parses `args` and returns the same shape as the low-level `parse()` function, always including a leading entry for the global block. Does not call any `.action()` handlers.
 - **`.run(args)`** parses `args` and dispatches to the `.action()` handler of whichever command was actually matched (the deepest entry in the parsed result). Throws if that command has no `.action()` attached. Does nothing if `--help` was passed (parsing already printed help and stopped).
 
@@ -85,8 +85,9 @@ Flags and positional arguments can be interleaved freely — `run app.ts --verbo
 const cli = new Cli()
   .command("run <file>", "Run a file")
   .param("--verbose -v boolean 0", "Verbose output")
-  .action(({ params, positionals }) => {
+  .action(({ params, positionals, globalParams }) => {
     console.log(`running ${positionals.file}, verbose=${params.verbose}`);
+    console.log("global params:", globalParams);
   });
 
 cli.run(process.argv.slice(2));
@@ -97,7 +98,7 @@ cli.run(process.argv.slice(2));
 #### Importing
 
 ```javascript
-import { Param, Block, parse } from "argblock";
+import { Param, Block, parse, globalArg } from "argblock";
 ```
 
 #### Defining Parameters and Blocks
@@ -150,6 +151,7 @@ import { Param, Block, parse } from "argblock";
 - **Long Parameters**: Supports `--name value` and `--name=value` formats.
 - **Short Parameters**: Supports `-f` for single flags and `-abc` for multiple boolean flags.
 - **Negated Parameters**: Supports `--no-name` for boolean flags.
+- **`--` Separator**: every token after a bare `--` is a positional, even if it looks like a flag or matches a command name — `mycli run -- --weird`, or with a link `mycli -- build`. The `--` itself is not stored.
 - **Positional Arguments**: Required, optional, and variadic positionals per block via `positionals`, freely interleaved with flags.
 - **Custom Matchers**: Allows custom matching logic for blocks via the `matcher` property.
 - **Nested Commands**: Supports hierarchical command structures through `children` in `Block`.
@@ -162,7 +164,7 @@ The library consists of several internal modules:
 
 - **`block.ts`**: Defines the `Block` class and a default matcher for argument matching.
 
-  - `Block`: Represents a command with an argument name, parameters, positionals, description, matcher, and child blocks.
+  - `Block`: Represents a command with an argument name, parameters, positionals, description, matcher, child blocks, and an optional `link` — the name of a child block that parsing falls into when no command is given (this is what `Cli`'s `commandLink` sets).
   - Methods: `findParam(name)` and `findShortParam(name)` to locate parameters by name or short form.
 
 - **`param.ts`**: Defines the `Param` class for parameter configuration.
@@ -173,7 +175,7 @@ The library consists of several internal modules:
 - **`parse/parse.ts`**: Contains the main `parse` function and global block logic.
   - Handles argument parsing and block traversal.
   - Supports a default global block for top-level parameters. The result always starts with the global block's entry — either the block passed as `[globalBlock]`, or a synthetic one wrapping the given top-level blocks.
-  - Walks the argument list token by token: a token starting with `-` is parsed as a flag, a token matching a child block's name starts a new command, and any other token fills the current block's next unfilled positional (or is appended to a trailing variadic positional). Required positionals are checked once the block is done being read (on switching to a new command, or at the end of the arguments), so flags and positionals can be interleaved in any order.
+  - Walks the argument list token by token: a token starting with `-` is parsed as a flag of the current block; any other token first tries the current block's children (commands win over positionals), then fills the next unfilled positional (or is appended to a trailing variadic positional). If the current block has a `link` and nothing took the token — or a flag is unknown to the current block but known to the linked one, or the arguments end without a command — parsing enters the linked block and reads the same token again there. A bare `--` ends flag and command parsing: every remaining token goes to positionals, entering the linked block when the current one has no free slot. Required positionals are checked once the block is done being read (on switching to a new command, or at the end of the arguments), so flags and positionals can be interleaved in any order.
   - On `--help`, prints `formatHelp(currentBlock)` (see `parse/help.ts`) and stops parsing.
 
 - **`parse/help.ts`**: `formatHelp(block)` renders a usage string (positionals, options, subcommands, description) for a single `Block`, used for `--help` output.
@@ -237,14 +239,18 @@ Output:
 The parser throws errors in the following cases:
 
 - Unknown parameters (e.g., `--unknown`).
+- Unknown positional tokens that no command or positional accepts (`Unknown arg: ...`).
 - Duplicated parameters in the same block.
 - Invalid argument formats.
-- Missing required positional arguments.
+- Missing required positional arguments, including a required variadic with no tokens.
 - Empty block list provided to `parse`.
+- A `link` / `commandLink` naming a child block that doesn't exist.
+- A pattern default that doesn't match the parameter type — at `.param()`, not at parse time.
+- `.action()` on the global block together with `commandLink` — at declaration.
 
 ### Custom Matchers
 
-You can define custom matchers for blocks to handle complex argument patterns. A matcher receives the remaining argument list and returns whether it matched, along with the remaining elements to continue parsing from:
+You can define custom matchers for blocks to handle complex argument patterns. A matcher receives the remaining argument list and returns whether it matched, along with the remaining elements to continue parsing from. The tokens it consumed, joined by spaces, become the entry's `arg`. A matcher that returns `match: true` must consume at least one token — otherwise parsing never advances:
 
 ```javascript
 import { Block } from "argblock";
@@ -270,3 +276,7 @@ const customBlock = new Block({
 - Boolean parameters expect values like `0`, `1`, `true`, or `false`.
 - Short parameters (`-abc`) assume boolean type and are set to `1` unless specified.
 - The parser does not support advanced features like parameter validation beyond type checking.
+- After a command, global flags are accepted only for the linked command: `mycli build --debug` throws unless `build` declares `--debug` itself.
+- A positional whose value equals a command name is taken as the command unless it comes after `--`.
+- A `.block()` group can't set a link through `Cli`; set `link` on the low-level `Block` instead.
+- Defaults are not shown in `--help` output.
